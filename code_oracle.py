@@ -117,10 +117,12 @@ def oracle_less_than(number, nqubits, name=None):
             # Just apply a X gate
             circuit.x(nqubits-position-1)
         else:
-            # If the digit is 1
+            # If the digit bi is 1
             # Apply a multi-controlled Z gate to mark states of the shape:
-            # |b1...bi-1 0 qi+1...qn>
-            # Check section 2 of paper to clarification
+            # |bn...bi+1 0 qi-1...q1>
+            # where bn,...,bi+1 are the first n-i bits of m, which is of the shape bn...bi+1 1 bi-1...b1
+            # because we just checked that bi is 1.
+            # Hence, the numbers of the form bn...bi+1 0 qi-1...q1 are smaller than m.
             circuit.x(nqubits-position-1)
             multi_z = multi_control_z(position + 1)
             circuit.append(multi_z.to_gate(), range(nqubits-1, nqubits-position-2, -1))
