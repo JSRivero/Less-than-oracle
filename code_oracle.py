@@ -136,3 +136,97 @@ def oracle_less_than(number, nqubits, name=None):
             pass
     
     return circuit
+
+
+def oracle_greater_than(number, nqubits, name=None):
+
+    '''
+    This function builds a quantum circuit, an oracle, which marks with a pi-phase
+    those states which represent numbers strictly larger than the number given by parameter.
+
+    The procedure uses the function oracle_less_than and introduces a global phase.
+
+    Input:
+    number: integer (int) containing the objective number,
+       or a string (str) with the binary representation of such number.
+    nqubits: integer (int) number of qubits of the circuit.
+       It must be larger than the number of digits of the binary representation of number.
+    name: string (str), default None, name of the circuit.
+
+    Output:
+    circuit: QuantumCircuit which marks with fase pi the states which
+    represent in binary the numbers strictly greater than number.
+    '''
+    if name is None:
+        name = ' > %d'%(number)
+    else:
+        name = name
+    
+    circuit = oracle_less_than(number=number+1, nqubits=nqubits, name=name)
+
+    circuit.z(0)
+    circuit.x(0)
+    circuit.z(0)
+    circuit.x(0)
+    
+    return circuit
+
+
+def oracle_interval(lower_boundary, upper_boundary, nqubits, name=None):
+
+    '''
+    This function builds a quantum circuit, an oracle, which marks with a pi-phase
+    those states which represent numbers in the interval (lower_boundary, upper_boundary).
+
+    The procedure uses the function oracle_less_than and oracle_greater_than.
+
+    Input:
+    lower_boundary: integer (int) containing the lower boundary,
+       or a string (str) with the binary representation of such number.
+    upper_boundary: integer (int) containing the upper boundary,
+       or a string (str) with the binary representation of such number.
+    nqubits: integer (int) number of qubits of the circuit.
+       It must be larger than the number of digits of the binary representation of number.
+    name: string (str), default None, name of the circuit.
+
+    Output:
+    circuit: QuantumCircuit which marks with fase pi the states which
+    represent in binary the numbers in the interval (lower_boundary, upper_boundary).
+    '''
+
+    if name is None:
+        name = '(%d,%d)'%(lower_boundary, upper_boundary)
+    else:
+        name = name
+
+    circuit = QuantumCircuit(nqubits, name=name)
+
+    circuit.append(oracle_less_than(number=upper_boundary, nqubits=nqubits), range(nqubits))
+    circuit.append(oracle_greater_than(number=lower_boundary, nqubits=nqubits), range(nqubits))
+    
+    circuit.z(0)
+    circuit.x(0)
+    circuit.z(0)
+    circuit.x(0)
+
+    return circuit
+
+
+# Some examples:
+
+if __name__=='__main__':
+
+    nqubits = 6
+
+    # Less than oracle
+    number_less_than = 42
+    less_than_oracle = oracle_less_than(number=number_less_than, nqubits=nqubits)
+
+    # Greater than oracle
+    number_larger_than = 23
+    greater_than_oracle = oracle_greater_than(number=number_larger_than, nqubits=nqubits)
+
+    # Interval oracle
+    lower_boundary = 25
+    upper_boundary = 42
+    interval_oracle = oracle_interval(lower_boundary=lower_boundary, upper_boundary=upper_boundary, nqubits=nqubits)
