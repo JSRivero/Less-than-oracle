@@ -1,6 +1,9 @@
 # Imports
-from qiskit import QuantumCircuit
+from qiskit import QuantumCircuit, transpile
 from qiskit.circuit.library import MCXGate
+from qiskit.extensions import UnitaryGate
+
+import numpy as np
 
 def to_binary(number, nbits=None):
     
@@ -29,7 +32,6 @@ def to_binary(number, nbits=None):
             print('Error, nbits must be larger than %d.'%(len(binary)))
         else:
             return '0' * (nbits - len(binary)) + binary
-
 
 
 def multi_control_z(nqubits):
@@ -138,6 +140,11 @@ def oracle_less_than(number, nqubits, name=None):
     return circuit
 
 
+#################################################
+###### ORACLES BUILT WITH LESS-THAN ORACLE ######
+#################################################
+
+
 def oracle_greater_than(number, nqubits, name=None):
 
     '''
@@ -212,21 +219,92 @@ def oracle_interval(lower_boundary, upper_boundary, nqubits, name=None):
     return circuit
 
 
-# Some examples:
+#############################################
+###### ORACLES BUILT WITH UNITARY GATE ######
+#############################################
 
-if __name__=='__main__':
+def matrix_less_than(number:int, N:int):
+    '''
+    Creates a squared matrix of the form
+    -1 0 ... 0 0 ... 0
+    0 -1 ... 0 0 ... 0
+    .
+    .
+    .     0 -1 0 ... 0
+             0 1 ... 0
+                     .
 
-    nqubits = 6
 
-    # Less than oracle
-    number_less_than = 42
-    less_than_oracle = oracle_less_than(number=number_less_than, nqubits=nqubits)
+                    1
+    With 0s outside of the diagonal, and the first $number elements
+    of the diagonal are -1 and the rest are 1.
 
-    # Greater than oracle
-    number_larger_than = 23
-    greater_than_oracle = oracle_greater_than(number=number_larger_than, nqubits=nqubits)
+    Input:
+        - number (int): number for less than oracle
+        - N (int): Total size of the squared matrix, with N = 2^nqubits.
+    
+    Output:
+        - matrix (np.array): diagonal matrix with first $number elements are -1
+    '''
+    v = np.array([-1]*number + [1]*(N-number))
+    matrix = np.diag(v)
+    return matrix
 
-    # Interval oracle
-    lower_boundary = 25
-    upper_boundary = 42
-    interval_oracle = oracle_interval(lower_boundary=lower_boundary, upper_boundary=upper_boundary, nqubits=nqubits)
+
+def unitary_oracle_less_than(number:int, nqubits:int, name=None):
+
+    '''
+    This function builds a quantum circuit, an oracle, which marks with a pi-phase
+    those states which represent numbers strictly smaler than the number given by parameter
+    by using the method UnitaryGate from Qiskit.
+
+    Input:
+    number: integer (int) containing the objective number,
+       or a string (str) with the binary representation of such number.
+    nqubits: integer (int) number of qubits of the circuit.
+       It must be larger than the number of digits of the binary representation of number.
+    name: string (str), default None, name of the circuit.
+
+    Output:
+    circuit: QuantumCircuit which marks with fase pi the states which
+    represent in binary the numbers strictly smaller than number.
+    '''
+
+    # Construction of the circuit
+    if name:# If name is provided give such name to the circuit
+        circuit = QuantumCircuit(nqubits, name=name)
+    else: # Otherwise, the name is just " < number Uni"
+        circuit = QuantumCircuit(nqubits, name = ' < %d Uni'%number)
+    
+    
+    circuit.append(UnitaryGate(matrix_less_than(number, 2**nqubits)), range(nqubits))
+
+    return circuit
+
+
+
+
+################################################
+###### CALCULATE DEPTH WITH GIVEN BACKEND ######
+################################################
+
+def decompose_circuit(circuit:QuantumCircuit, backend, reps:int=50, opt_level=3):
+    '''
+    Decomposes a circuit according to a backend.
+
+    Input:
+        - circuit (QuantumCircuit): circuit to be decomposed
+
+        - backend: backend to use. It may be a str (when statevector), or a backend object
+
+        - reps (int): number of repetitions in decompose. By default uses 50 which is
+        usually enough to decompose any circuit.
+
+        - opt_level (int in 0, 1, 2, 3): optimization level of the circuit. By default 3 to
+        obtain the maximum optimization.
+    '''
+
+    circuit_transpiled = transpile(circuits=circuit, backend=backend, optimization_level=opt_level)
+    circuit_decomposed = circuit_transpiled.decompose(reps=reps)
+    
+    return circuit_decomposed
